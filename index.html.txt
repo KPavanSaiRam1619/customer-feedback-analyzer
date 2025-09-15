@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Feedback Analyzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .code-block {
+            background: #1e293b;
+            color: #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+        }
+        .feedback-item {
+            transition: all 0.3s ease;
+        }
+        .feedback-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .sentiment-positive { border-left: 4px solid #10b981; }
+        .sentiment-negative { border-left: 4px solid #ef4444; }
+        .sentiment-neutral { border-left: 4px solid #6b7280; }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-in {
+            animation: slideIn 0.5s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <i class="fas fa-chart-line text-blue-600 text-2xl mr-3"></i>
+                    <h1 class="text-xl font-bold text-gray-900">Customer Feedback Analyzer</h1>
+                </div>
+                <nav class="flex space-x-4">
+                    <button onclick="exportData()" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                        <i class="fas fa-download mr-2"></i>Export
+                    </button>
+                    <button onclick="showSettings()" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                        <i class="fas fa-cog mr-2"></i>Settings
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Tabs -->
+        <div class="mb-8">
+            <div class="border-b border-gray-200">
+                <nav class="-mb-px flex space-x-8">
+                    <button onclick="switchTab('input')" class="tab-btn border-b-2 border-blue-500 py-2 px-1 text-sm font-medium text-blue-600" data-tab="input">
+                        <i class="fas fa-upload mr-2"></i>Input Data
+                    </button>
+                    <button onclick="switchTab('analysis')" class="tab-btn border-b-2 border-transparent py-2 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="analysis">
+                        <i class="fas fa-analytics mr-2"></i>Analysis
+                    </button>
+                    <button onclick="switchTab('code')" class="tab-btn border-b-2 border-transparent py-2 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="code">
+                        <i class="fas fa-code mr-2"></i>Code Generator
+                    </button>
+                    <button onclick="switchTab('paths')" class="tab-btn border-b-2 border-transparent py-2 px-1 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300" data-tab="paths">
+                        <i class="fas fa-folder-tree mr-2"></i>Path Configuration
+                    </button>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Tab Contents -->
+        <!-- Input Tab -->
+        <div id="input-tab" class="tab-content active">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Input Section -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h2 class="text-lg font-semibold mb-4">Input Feedback Data</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Paste Feedback</label>
+                            <textarea id="feedbackInput" rows="8" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Paste customer feedback here, one per line..."></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Or Upload File</label>
+                            <input type="file" id="fileInput" accept=".txt,.csv,.json" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <button onclick="processFeedback()" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200">
+                            <i class="fas fa-play mr-2"></i>Analyze Feedback
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Sample Data -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h2 class="text-lg font-semibold mb-4">Sample Feedback Data</h2>
+                    <div class="space-y-3">
+                        <div class="feedback-item sentiment-positive p-3 bg-gray-50 rounded">
+                            <p class="text-sm">"The customer service was excellent! They resolved my issue quickly."</p>
+                            <span class="text-xs text-green-600 mt-1 inline-block">Positive</span>
+                        </div>
+                        <div class="feedback-item sentiment-negative p-3 bg-gray-50 rounded">
+                            <p class="text-sm">"The product arrived damaged and the packaging was poor."</p>
+                            <span class="text-xs text-red-600 mt-1 inline-block">Negative</span>
+                        </div>
+                        <div class="feedback-item sentiment-neutral p-3 bg-gray-50 rounded">
+                            <p class="text-sm">"The delivery was on time but the product was average."</p>
+                            <span class="text-xs text-gray-600 mt-1 inline-block">Neutral</span>
+                        </div>
+                    </div>
+                    <button onclick="loadSampleData()" class="mt-4 text-blue-600 hover:text-blue-700 text-sm font-medium">
+                        <i class="fas fa-plus mr-2"></i>Load More Samples
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analysis Tab -->
+        <div id="analysis-tab" class="tab-content">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Summary Cards -->
+                <div class="lg:col-span-3 grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-blue-100 rounded-full">
+                                <i class="fas fa-comments text-blue-600"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">Total Feedback</p>
+                                <p class="text-2xl font-bold text-gray-900" id="totalFeedback">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-green-100 rounded-full">
+                                <i class="fas fa-smile text-green-600"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">Positive</p>
+                                <p class="text-2xl font-bold text-gray-900" id="positiveCount">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-red-100 rounded-full">
+                                <i class="fas fa-frown text-red-600"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">Negative</p>
+                                <p class="text-2xl font-bold text-gray-900" id="negativeCount">0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <div class="flex items-center">
+                            <div class="p-3 bg-gray-100 rounded-full">
+                                <i class="fas fa-meh text-gray-600"></i>
+                            </div>
+                            <div class="ml-4">
+                                <p class="text-sm font-medium text-gray-600">Neutral</p>
+                                <p class="text-2xl font-bold text-gray-900" id="neutralCount">0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="lg:col-span-2 bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold mb-4">Sentiment Distribution</h3>
+                    <canvas id="sentimentChart" width="400" height="200"></canvas>
+                </div>
+
+                <!-- Keywords -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold mb-4">Top Keywords</h3>
+                    <div id="keywordList" class="space-y-2">
+                        <!-- Keywords will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Feedback List -->
+                <div class="lg:col-span-3 bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold mb-4">Analyzed Feedback</h3>
+                    <div id="feedbackList" class="space-y-3 max-h-96 overflow-y-auto">
+                        <!-- Feedback items will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Code Generator Tab -->
+        <div id="code-tab" class="tab-content">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Code Options -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h2 class="text-lg font-semibold mb-4">Generate Analysis Code</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Language</label>
+                            <select id="codeLanguage" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="python">Python</option>
+                                <option value="javascript">JavaScript</option>
+                                <option value="r">R</option>
+                                <option value="sql">SQL</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Analysis Type</label>
+                            <select id="analysisType" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="sentiment">Sentiment Analysis</option>
+                                <option value="keywords">Keyword Extraction</option>
+                                <option value="categorization">Text Categorization</option>
+                                <option value="api">API Integration</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Data Source</label>
+                            <input type="text" id="dataSource" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., feedback.csv, API endpoint">
+                        </div>
+                        <button onclick="generateCode()" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200">
+                            <i class="fas fa-code mr-2"></i>Generate Code
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Code Output -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-semibold">Generated Code</h2>
+                        <button onclick="copyCode()" class="text-gray-600 hover:text-gray-900">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <div id="codeOutput" class="code-block">
+                        <p class="text-gray-400">Generated code will appear here...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Path Configuration Tab -->
+        <div id="paths-tab" class="tab-content">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Input Paths -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h2 class="text-lg font-semibold mb-4">Input Paths</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Data Source Path</label>
+                            <input type="text" id="inputPath" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="/data/feedback/">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">File Pattern</label>
+                            <input type="text" id="filePattern" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="*.csv">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">API Endpoint (Optional)</label>
+                            <input type="text" id="apiEndpoint" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://api.example.com/feedback">
+                        </div>
+                        <button onclick="saveInputPaths()" class="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition duration-200">
+                            <i class="fas fa-save mr-2"></i>Save Input Configuration
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Output Paths -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h2 class="text-lg font-semibold mb-4">Output Paths</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Results Directory</label>
+                            <input type="text" id="outputPath" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="/results/analysis/">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Report Format</label>
+                            <select id="reportFormat" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="json">JSON</option>
+                                <option value="csv">CSV</option>
+                                <option value="html">HTML Report</option>
+                                <option value="pdf">PDF Report</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Log File Path</label>
+                            <input type="text" id="logPath" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="/logs/feedback_analysis.log">
+                        </div>
+                        <button onclick="saveOutputPaths()" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200">
+                            <i class="fas fa-save mr-2"></i>Save Output Configuration
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Path Summary -->
+            <div class="mt-6 bg-white rounded-lg shadow p-6">
+                <h2 class="text-lg font-semibold mb-4">Configuration Summary</h2>
+                <div id="pathSummary" class="bg-gray-50 rounded-lg p-4">
+                    <p class="text-gray-600">No paths configured yet. Please set your input and output paths above.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg transform translate-y-full transition-transform duration-300">
+        <div class="flex items-center">
+            <i class="fas fa-check-circle mr-2"></i>
+            <span id="toastMessage">Success!</span>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let feedbackData = [];
+        let sentimentChart = null;
+
+        // Tab switching
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active state from all tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-blue-500', 'text-blue-600');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+            
+            // Show selected tab
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+            
+            // Add active state to selected tab button
+            const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+            activeBtn.classList.remove('border-transparent', 'text-gray-500');
+            activeBtn.classList.add('border-blue-500', 'text-blue-600');
+        }
+
+        // Process feedback
+        function processFeedback() {
+            const input = document.getElementById('feedbackInput').value;
+            if (!input.trim()) {
+                showToast('Please enter some feedback data', 'error');
+                return;
+            }
+
+            // Split feedback into lines and analyze
+            const feedbacks = input.split('\n').filter(f => f.trim());
+            feedbackData = feedbacks.map((feedback, index) => {
+                const sentiment = analyzeSentiment(feedback);
+                const keywords = extractKeywords(feedback);
+                return {
+                    id: index,
+                    text: feedback,
+                    sentiment: sentiment,
+                    keywords: keywords,
+                    timestamp: new Date().toISOString()
+                };
+            });
+
+            updateAnalysis();
+            showToast('Feedback analyzed successfully!');
+            switchTab('analysis');
+        }
+
+        // Simple sentiment analysis
+        function analyzeSentiment(text) {
+            const positiveWords = ['excellent', 'great', 'amazing', 'wonderful', 'fantastic', 'good', 'love', 'perfect', 'quickly', 'resolved'];
+            const negativeWords = ['poor', 'bad', 'terrible', 'awful', 'horrible', 'hate', 'damaged', 'slow', 'issue', 'problem'];
+            
+            const words = text.toLowerCase().split(/\s+/);
+            let positiveScore = 0;
+            let negativeScore = 0;
+            
+            words.forEach(word => {
+                if (positiveWords.includes(word)) positiveScore++;
+                if (negativeWords.includes(word)) negativeScore++;
+            });
+            
+            if (positiveScore > negativeScore) return 'positive';
+            if (negativeScore > positiveScore) return 'negative';
+            return 'neutral';
+        }
+
+        // Extract keywords
+        function extractKeywords(text) {
+            const stopWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'was', 'are', 'were'];
+            const words = text.toLowerCase().split(/\s+/)
+                .filter(word => word.length > 3 && !stopWords.includes(word))
+                .filter((word, index, self) => self.indexOf(word) === index);
+            return words.slice(0, 5);
+        }
+
+        // Update analysis display
+        function updateAnalysis() {
+            // Update counts
+            const counts = {
+                total: feedbackData.length,
+                positive: feedbackData.filter(f => f.sentiment === 'positive').length,
+                negative: feedbackData.filter(f => f.sentiment === 'negative').length,
+                neutral: feedbackData.filter(f => f.sentiment === 'neutral').length
+            };
+            
+            document.getElementById('totalFeedback').textContent = counts.total;
+            document.getElementById('positiveCount').textContent = counts.positive;
+            document.getElementById('negativeCount').textContent = counts.negative;
+            document.getElementById('neutralCount').textContent = counts.neutral;
+            
+            // Update chart
+            updateSentimentChart(counts);
+            
+            // Update keywords
+            updateKeywords();
+            
+            // Update feedback list
+            updateFeedbackList();
+        }
+
+        // Update sentiment chart
+        function updateSentimentChart(counts) {
+            const ctx = document.getElementById('sentimentChart').getContext('2d');
+            
+            if (sentimentChart) {
+                sentimentChart.destroy();
+            }
+            
+            sentimentChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Positive', 'Negative', 'Neutral'],
+                    datasets: [{
+                        data: [counts.positive, counts.negative, counts.neutral],
+                        backgroundColor: ['#10b981', '#ef4444', '#6b7280'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update keywords display
+        function updateKeywords() {
+            const allKeywords = feedbackData.flatMap(f => f.keywords);
+            const keywordCounts = {};
+            
+            allKeywords.forEach(keyword => {
+                keywordCounts[keyword] = (keywordCounts[keyword] || 0) + 1;
+            });
+            
+            const sortedKeywords = Object.entries(keywordCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 10);
+            
+            const keywordList = document.getElementById('keywordList');
+            keywordList.innerHTML = sortedKeywords.map(([keyword, count]) => `
+                <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <span class="text-sm font-medium">${keyword}</span>
+                    <span class="text-xs text-gray-500">${count} times</span>
+                </div>
+            `).join('');
+        }
+
+        // Update feedback list
+        function updateFeedbackList() {
+            const feedbackList = document.getElementById('feedbackList');
+            feedbackList.innerHTML = feedbackData.map(feedback => `
+                <div class="feedback-item sentiment-${feedback.sentiment} p-4 bg-gray-50 rounded animate-slide-in">
+                    <p class="text-sm mb-2">${feedback.text}</p>
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs px-2 py-1 rounded ${
+                            feedback.sentiment === 'positive' ? 'bg-green-100 text-green-800' :
+                            feedback.sentiment === 'negative' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                        }">
+                            ${feedback.sentiment.charAt(0).toUpperCase() + feedback.sentiment.slice(1)}
+                        </span>
+                        <span class="text-xs text-gray-500">
+                            Keywords: ${feedback.keywords.join(', ')}
+                        </span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Load sample data
+        function loadSampleData() {
+            const samples = [
+                "The product quality exceeded my expectations!",
+                "Customer support was unhelpful and rude.",
+                "Delivery was fast and the packaging was secure.",
+                "The website is difficult to navigate.",
+                "Great value for money, will definitely buy again.",
+                "The item arrived broken and customer service didn't respond.",
+                "Average experience, nothing special but nothing bad either.",
+                "Love the new features, very intuitive!",
+                "Waited too long for shipping, very disappointed.",
+                "The team went above and beyond to help me."
+            ];
+            
+            document.getElementById('feedbackInput').value = samples.join('\n');
+            showToast('Sample data loaded!');
+        }
+
+        // Generate code
+        function generateCode() {
+            const language = document.getElementById('codeLanguage').value;
+            const analysisType = document.getElementById('analysisType').value;
+            const dataSource = document.getElementById('dataSource').value || 'feedback.csv';
+            
+            let code = '';
+            
+            if (language === 'python') {
+                code = generatePythonCode(analysisType, dataSource);
+            } else if (language === 'javascript') {
+                code = generateJavaScriptCode(analysisType, dataSource);
+            } else if (language === 'r') {
+                code = generateRCode(analysisType, dataSource);
+            } else if (language === 'sql') {
+                code = generateSQLCode(analysisType, dataSource);
+            }
+            
+            document.getElementById('codeOutput').innerHTML = `<pre><code>${code}</code></pre>`;
+            showToast('Code generated successfully!');
+        }
+
+        // Python code generator
+        function generatePythonCode(analysisType, dataSource) {
+            const templates = {
+                sentiment: `import pandas as pd
+import numpy as np
+from textblob import TextBlob
+
+# Load feedback data
+df = pd.read_csv('${dataSource}')
+
+# Function to analyze sentiment
+def analyze_sentiment(text):
+    analysis = TextBlob(str(text))
+    if analysis.sentiment.polarity > 0:
+        return 'positive'
+    elif analysis.sentiment.polarity < 0:
+        return 'negative'
+    else:
+        return 'neutral'
+
+# Apply sentiment analysis
+df['sentiment'] = df['feedback'].apply(analyze_sentiment)
+
+# Display results
+print(df[['feedback', 'sentiment']].head())
+sentiment_counts = df['sentiment'].value_counts()
+print("\\nSentiment Distribution:")
+print(sentiment_counts)`,
+                keywords: `import pandas as pd
+from collections import Counter
+import re
+
+# Load feedback data
+df = pd.read_csv('${dataSource}')
+
+# Function to extract keywords
+def extract_keywords(text):
+    words = re.findall(r'\\b\\w{4,}\\b', str(text).lower())
+    return [word for word in words if word not in stop_words]
+
+# Define stop words
+stop_words = {'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with'}
+
+# Extract keywords from all feedback
+all_keywords = []
+for feedback in df['feedback']:
+    all_keywords.extend(extract_keywords(feedback))
+
+# Count keyword frequency
+keyword_counts = Counter(all_keywords)
+top_keywords = keyword_counts.most_common(10)
+
+print("Top Keywords:")
+for keyword, count in top_keywords:
+    print(f"{keyword}: {count}")`,
+                categorization: `import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import KMeans
+
+# Load feedback data
+df = pd.read_csv('${dataSource}')
+
+# Vectorize text
+vectorizer = TfidfVectorizer(max_features=1000, stop_words='english')
+X = vectorizer.fit_transform(df['feedback'])
+
+# Perform clustering
+kmeans = KMeans(n_clusters=5, random_state=42)
+df['category'] = kmeans.fit_predict(X)
+
+# Display categories
+for i in range(5):
+    print(f"\\nCategory {i}:")
+    category_feedback = df[df['category'] == i]['feedback'].head(3)
+    for feedback in category_feedback:
+        print(f"- {feedback}")`,
+                api: `import requests
+import pandas as pd
+
+# API configuration
+API_URL = "${dataSource}"
+API_KEY = "your_api_key_here"
+
+def fetch_feedback():
+    headers = {
+        'Authorization': f'Bearer {API_KEY}',
+        'Content-Type': 'application/json'
+    }
+    
+    try:
+        response = requests.get(API_URL, headers=headers)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching data: {e}")
+        return None
+
+# Fetch and process feedback
+feedback_data = fetch_feedback()
+if feedback_data:
+    df = pd.DataFrame(feedback_data)
+    print(f"Fetched {len(df)} feedback entries")
+    print(df.head())`
+            };
+            
+            return templates[analysisType] || templates.sentiment;
+        }
+
+        // JavaScript code generator
+        function generateJavaScriptCode(analysisType, dataSource) {
+            const templates = {
+                sentiment: `// Load feedback data
+async function loadFeedback() {
+    try {
+        const response = await fetch('${dataSource}');
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Error loading data:', error);
+    }
+}
+
+// Simple sentiment analysis
+function analyzeSentiment(text) {
+    const positiveWords = ['excellent', 'great', 'amazing', 'wonderful', 'good'];
+    const negativeWords = ['poor', 'bad', 'terrible', 'awful', 'horrible'];
+    
+    const words = text.toLowerCase().split(/\\s+/);
+    let score = 0;
+    
+    words.forEach(word => {
+        if (positiveWords.includes(word)) score++;
+        if (negativeWords.includes(word)) score--;
+    });
+    
+    if (score > 0) return 'positive';
+    if (score < 0) return 'negative';
+    return 'neutral';
+}
+
+// Process feedback
+loadFeedback().then(feedback => {
+    const analyzed = feedback.map(item => ({
+        ...item,
+        sentiment: analyzeSentiment(item.text)
+    }));
+    
+    console.log('Analyzed feedback:', analyzed);
+});`,
+                keywords: `// Extract keywords from text
+function extractKeywords(text) {
+    const stopWords = new Set(['the', 'and', 'or', 'but', 'in', 'on', 'at']);
+    const words = text.toLowerCase()
+        .match(/\\b\\w{4,}\\b/g) || [];
+    
+    return words.filter(word => !stopWords.has(word));
+}
+
+// Count keyword frequency
+function countKeywords(feedback) {
+    const keywordCounts = {};
+    
+    feedback.forEach(item => {
+        const keywords = extractKeywords(item.text);
+        keywords.forEach(keyword => {
+            keywordCounts[keyword] = (keywordCounts[keyword] || 0) + 1;
+        });
+    });
+    
+    return Object.entries(keywordCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+}
+
+// Usage example
+const feedback = [
+    { text: "Great product, excellent service!" },
+    { text: "Poor quality, disappointed." }
+];
+
+const topKeywords = countKeywords(feedback);
+console.log('Top keywords:', topKeywords);`,
+                categorization: `// Simple text categorization using keywords
+const categories = {
+    'product': ['product', 'quality', 'item', 'goods'],
+    'service': ['service', 'support', 'help', 'staff'],
+    'delivery': ['delivery', 'shipping', 'arrived', 'package'],
+    'price': ['price', 'cost', 'value', 'expensive', 'cheap'],
+    'website': ['website', 'app', 'interface', 'navigation']
+};
+
+function categorizeFeedback(text) {
+    const words = text.toLowerCase().split(/\\s+/);
+    const scores = {};
+    
+    Object.entries(categories).forEach(([category, keywords]) => {
+        scores[category] = keywords.reduce((score, keyword) => {
+            return score + words.filter(word => word.includes(keyword)).length;
+        }, 0);
+    });
+    
+    const topCategory = Object.entries(scores)
+        .sort((a, b) => b[1] - a[1])[0];
+    
+    return topCategory[1] > 0 ? topCategory[0] : 'other';
+}
+
+// Example usage
+const feedback = "The website is hard to navigate but the product quality is good";
+const category = categorizeFeedback(feedback);
+console.log('Category:', category);`,
+                api: `// API integration example
+class FeedbackAnalyzer {
+    constructor(apiUrl, apiKey) {
+        this.apiUrl = apiUrl;
+        this.apiKey = apiKey;
+    }
+    
+    async fetchFeedback() {
+        try {
+            const response = await fetch(this.apiUrl, {
+                headers: {
+                    'Authorization': \`Bearer \${this.apiKey}\`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(\`HTTP error! status: \${response.status}\`);
+            }
+            
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching feedback:', error);
+            throw error;
+        }
+    }
+    
+    async analyzeFeedback() {
+        const feedback = await this.fetchFeedback();
+        return feedback.map(item => ({
+            ...item,
+            sentiment: this.analyzeSentiment(item.text)
+        }));
+    }
+    
+    analyzeSentiment(text) {
+        // Simple sentiment analysis logic
+        const positive = text.match(/\\b(great|excellent|amazing|good|love)\\b/gi);
+        const negative = text.match(/\\b(bad|terrible|awful|poor|hate)\\b/gi);
+        
+        if (positive && positive.length > (negative || []).length) return 'positive';
+        if (negative && negative.length > (positive || []).length) return 'negative';
+        return 'neutral';
+    }
+}
+
+// Usage
+const analyzer = new FeedbackAnalyzer('${dataSource}', 'your-api-key');
+analyzer.analyzeFeedback().then(results => {
+    console.log('Analysis complete:', results);
+});`
+            };
+            
+            return templates[analysisType] || templates.sentiment;
+        }
+
+        // R code generator
+        function generateRCode(analysisType, dataSource) {
+            const templates = {
+                sentiment: `# Load required libraries
+library(tidyverse)
+library(tidytext)
+library(syuzhet)
+
+# Load feedback data
+feedback_data <- read.csv("${dataSource}")
+
+# Sentiment analysis using syuzhet
+sentiment_scores <- get_sentiment(feedback_data$feedback, method = "afinn")
+
+# Categorize sentiment
+feedback_data$sentiment <- case_when(
+  sentiment_scores > 0 ~ "positive",
+  sentiment_scores < 0 ~ "negative",
+  TRUE ~ "neutral"
+)
+
+# View results
+print(head(feedback_data[, c("feedback", "sentiment")]))
+
+# Plot sentiment distribution
+sentiment_counts <- table(feedback_data$sentiment)
+barplot(sentiment_counts, main = "Sentiment Distribution", 
+        col = c("red", "gray", "green"))`,
+                keywords: `# Load required libraries
+library(tidyverse)
+library(tidytext)
+library(stopwords)
+
+# Load feedback data
+feedback_data <- read.csv("${dataSource}")
+
+# Tokenize text
+feedback_words <- feedback_data %>%
+  unnest_tokens(word, feedback) %>%
+  anti_join(stop_words) %>%
+  filter(str_length(word) > 3)
+
+# Count word frequency
+word_counts <- feedback_words %>%
+  count(word, sort = TRUE) %>%
+  head(10)
+
+# Display top keywords
+print("Top Keywords:")
+print(word_counts)
+
+# Create word cloud
+library(wordcloud)
+wordcloud(words = word_counts$word, freq = word_counts$n, 
+          min.freq = 1, max.words = 50, random.order = FALSE, 
+          colors = brewer.pal(8, "Dark2"))`,
+                categorization: `# Load required libraries
+library(tidyverse)
+library(tidytext)
+library(topicmodels)
+
+# Load feedback data
+feedback_data <- read.csv("${dataSource}")
+
+# Create document-term matrix
+dtm <- feedback_data %>%
+  unnest_tokens(word, feedback) %>%
+  anti_join(stop_words) %>%
+  count(document_id, word) %>%
+  cast_dtm(document_id, word, n)
+
+# Perform LDA topic modeling
+lda_model <- LDA(dtm, k = 5, control = list(seed = 1234))
+
+# Get topics
+topics <- tidy(lda_model, matrix = "beta")
+
+# Display top terms for each topic
+top_terms <- topics %>%
+  group_by(topic) %>%
+  top_n(5, beta) %>%
+  ungroup() %>%
+  arrange(topic, -beta)
+
+print("Top terms by topic:")
+print(top_terms)`,
+                api: `# Load required libraries
+library(httr)
+library(jsonlite)
+library(tidyverse)
+
+# API configuration
+api_url <- "${dataSource}"
+api_key <- "your_api_key_here"
+
+# Function to fetch feedback from API
+fetch_feedback <- function() {
+  response <- GET(
+    url = api_url,
+    add_headers(Authorization = paste("Bearer", api_key))
+  )
+  
+  if (status_code(response) == 200) {
+    content <- content(response, "text")
+    return(fromJSON(content))
+  } else {
+    stop(paste("API request failed with status:", status_code(response)))
+  }
+}
+
+# Fetch and analyze feedback
+tryCatch({
+  feedback_data <- fetch_feedback()
+  cat("Successfully fetched", length(feedback_data), "feedback entries\\n")
+  
+  # Convert to data frame
+  df <- as.data.frame(feedback_data)
+  print(head(df))
+  
+}, error = function(e) {
+  cat("Error:", e$message, "\\n")
+})`
+            };
+            
+            return templates[analysisType] || templates.sentiment;
+        }
+
+        // SQL code generator
+        function generateSQLCode(analysisType, dataSource) {
+            const templates = {
+                sentiment: `-- Sentiment Analysis Query
+WITH feedback_keywords AS (
+  SELECT 
+    id,
+    feedback_text,
+    CASE 
+      WHEN feedback_text LIKE '%excellent%' OR feedback_text LIKE '%great%' 
+           OR feedback_text LIKE '%amazing%' OR feedback_text LIKE '%good%'
+      THEN 'positive'
+      WHEN feedback_text LIKE '%poor%' OR feedback_text LIKE '%bad%' 
+           OR feedback_text LIKE '%terrible%' OR feedback_text LIKE '%awful%'
+      THEN 'negative'
+      ELSE 'neutral'
+    END AS sentiment
+  FROM ${dataSource}
+)
+
+-- Get sentiment distribution
+SELECT 
+  sentiment,
+  COUNT(*) as count,
+  ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) as percentage
+FROM feedback_keywords
+GROUP BY sentiment
+ORDER BY count DESC;
+
+-- Sample feedback by sentiment
+SELECT sentiment, feedback_text
+FROM feedback_keywords
+ORDER BY 
+  CASE sentiment 
+    WHEN 'positive' THEN 1 
+    WHEN 'neutral' THEN 2 
+    WHEN 'negative' THEN 3 
+  END,
+  id
+LIMIT 10;`,
+                keywords: `-- Keyword Extraction Analysis
+WITH words AS (
+  SELECT 
+    id,
+    LOWER(REGEXP_REPLACE(feedback_text, '[^a-zA-Z\s]', '')) as clean_text
+  FROM ${dataSource}
+),
+
+split_words AS (
+  SELECT 
+    id,
+    UNNEST(STRING_TO_ARRAY(clean_text, ' ')) as word
+  FROM words
+  WHERE LENGTH(word) > 3
+),
+
+filtered_words AS (
+  SELECT 
+    word,
+    COUNT(*) as frequency
+  FROM split_words
+  WHERE word NOT IN ('the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'had')
+  GROUP BY word
+)
+
+-- Top keywords
+SELECT 
+  word,
+  frequency,
+  ROUND(frequency * 100.0 / SUM(frequency) OVER (), 2) as percentage
+FROM filtered_words
+ORDER BY frequency DESC
+LIMIT 20;
+
+-- Keyword co-occurrence
+SELECT 
+  w1.word as keyword1,
+  w2.word as keyword2,
+  COUNT(*) as co_occurrence
+FROM split_words w1
+JOIN split_words w2 ON w1.id = w2.id AND w1.word < w2.word
+GROUP BY w1.word, w2.word
+HAVING COUNT(*) > 5
+ORDER BY co_occurrence DESC
+LIMIT 10;`,
+                categorization: `-- Text Categorization using Keywords
+WITH categorized_feedback AS (
+  SELECT 
+    id,
+    feedback_text,
+    CASE 
+      WHEN feedback_text LIKE '%product%' OR feedback_text LIKE '%item%' 
+           OR feedback_text LIKE '%quality%' OR feedback_text LIKE '%feature%'
+      THEN 'product'
+      WHEN feedback_text LIKE '%service%' OR feedback_text LIKE '%support%' 
+           OR feedback_text LIKE '%help%' OR feedback_text LIKE '%staff%'
+      THEN 'service'
+      WHEN feedback_text LIKE '%delivery%' OR feedback_text LIKE '%shipping%' 
+           OR feedback_text LIKE '%arrived%' OR feedback_text LIKE '%package%'
+      THEN 'delivery'
+      WHEN feedback_text LIKE '%price%' OR feedback_text LIKE '%cost%' 
+           OR feedback_text LIKE '%value%' OR feedback_text LIKE '%expensive%'
+      THEN 'price'
+      WHEN feedback_text LIKE '%website%' OR feedback_text LIKE '%app%' 
+           OR feedback_text LIKE '%interface%' OR feedback_text LIKE '%navigation%'
+      THEN 'website'
+      ELSE 'other'
+    END as category
+  FROM ${dataSource}
+)
+
+-- Category distribution
+SELECT 
+  category,
+  COUNT(*) as count,
+  ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) as percentage
+FROM categorized_feedback
+GROUP BY category
+ORDER BY count DESC;
+
+-- Sample feedback by category
+SELECT 
+  category,
+  feedback_text
+FROM categorized_feedback
+ORDER BY 
+  CASE category 
+    WHEN 'product' THEN 1 
+    WHEN 'service' THEN 2 
+    WHEN 'delivery' THEN 3 
+    WHEN 'price' THEN 4 
+    WHEN 'website' THEN 5 
+    ELSE 6 
+  END,
+  id
+LIMIT 15;`,
+                api: `-- API Integration Example (PostgreSQL with pg_http extension)
+-- Note: This requires the pg_http extension to be installed
+
+-- Create table to store API responses
+CREATE TABLE IF NOT EXISTS feedback_api_responses (
+  id SERIAL PRIMARY KEY,
+  response_data JSONB,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Function to fetch feedback from API
+CREATE OR REPLACE FUNCTION fetch_feedback_from_api()
+RETURNS JSONB AS $$
+DECLARE
+  api_url TEXT := '${dataSource}';
+  api_key TEXT := 'your_api_key_here';
+  response JSONB;
+BEGIN
+  -- Make HTTP request to API
+  SELECT content INTO response
+  FROM http_get(
+    api_url,
+    ARRAY[
+      ('Authorization', 'Bearer ' || api_key),
+      ('Content-Type', 'application/json')
+    ]::http_header[]
+  );
+  
+  -- Store response
+  INSERT INTO feedback_api_responses (response_data)
+  VALUES (response);
+  
+  RETURN response;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to process API response
+CREATE OR REPLACE FUNCTION process_api_feedback()
+RETURNS TABLE (
+  feedback_id INTEGER,
+  feedback_text TEXT,
+  sentiment TEXT
+) AS $$
+DECLARE
+  api_response JSONB;
+BEGIN
+  -- Get latest API response
+  SELECT response_data INTO api_response
+  FROM feedback_api_responses
+  ORDER BY created_at DESC
+  LIMIT 1;
+  
+  -- Process and return feedback
+  RETURN QUERY
+  SELECT 
+    (elem->>'id')::INTEGER as feedback_id,
+    elem->>'text' as feedback_text,
+    CASE 
+      WHEN elem->>'text' LIKE '%excellent%' OR elem->>'text' LIKE '%great%' 
+      THEN 'positive'
+      WHEN elem->>'text' LIKE '%poor%' OR elem->>'text' LIKE '%bad%' 
+      THEN 'negative'
+      ELSE 'neutral'
+    END as sentiment
+  FROM jsonb_array_elements(api_response) as elem;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Usage example
+-- SELECT * FROM fetch_feedback_from_api();
+-- SELECT * FROM process_api_feedback() LIMIT 10;`
+            };
+            
+            return templates[analysisType] || templates.sentiment;
+        }
+
+        // Copy code to clipboard
+        function copyCode() {
+            const codeElement = document.getElementById('codeOutput').querySelector('code');
+            if (codeElement) {
+                navigator.clipboard.writeText(codeElement.textContent).then(() => {
+                    showToast('Code copied to clipboard!');
+                });
+            }
+        }
+
+        // Save input paths
+        function saveInputPaths() {
+            const config = {
+                inputPath: document.getElementById('inputPath').value,
+                filePattern: document.getElementById('filePattern').value,
+                apiEndpoint: document.getElementById('apiEndpoint').value
+            };
+            
+            localStorage.setItem('inputPaths', JSON.stringify(config));
+            updatePathSummary();
+            showToast('Input paths saved successfully!');
+        }
+
+        // Save output paths
+        function saveOutputPaths() {
+            const config = {
+                outputPath: document.getElementById('outputPath').value,
+                reportFormat: document.getElementById('reportFormat').value,
+                logPath: document.getElementById('logPath').value
+            };
+            
+            localStorage.setItem('outputPaths', JSON.stringify(config));
+            updatePathSummary();
+            showToast('Output paths saved successfully!');
+        }
+
+        // Update path summary
+        function updatePathSummary() {
+            const inputPaths = JSON.parse(localStorage.getItem('inputPaths') || '{}');
+            const outputPaths = JSON.parse(localStorage.getItem('outputPaths') || '{}');
+            
+            const summary = document.getElementById('pathSummary');
+            
+            if (Object.keys(inputPaths).length === 0 && Object.keys(outputPaths).length === 0) {
+                summary.innerHTML = '<p class="text-gray-600">No paths configured yet. Please set your input and output paths above.</p>';
+                return;
+            }
+            
+            let html = '<div class="space-y-3">';
+            
+            if (inputPaths.inputPath) {
+                html += `
+                    <div class="border-l-4 border-blue-500 pl-4">
+                        <h4 class="font-medium text-gray-900">Input Configuration</h4>
+                        <p class="text-sm text-gray-600">Path: ${inputPaths.inputPath}</p>
+                        ${inputPaths.filePattern ? `<p class="text-sm text-gray-600">Pattern: ${inputPaths.filePattern}</p>` : ''}
+                        ${inputPaths.apiEndpoint ? `<p class="text-sm text-gray-600">API: ${inputPaths.apiEndpoint}</p>` : ''}
+                    </div>
+                `;
+            }
+            
+            if (outputPaths.outputPath) {
+                html += `
+                    <div class="border-l-4 border-green-500 pl-4">
+                        <h4 class="font-medium text-gray-900">Output Configuration</h4>
+                        <p class="text-sm text-gray-600">Path: ${outputPaths.outputPath}</p>
+                        <p class="text-sm text-gray-600">Format: ${outputPaths.reportFormat}</p>
+                        <p class="text-sm text-gray-600">Log: ${outputPaths.logPath}</p>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            summary.innerHTML = html;
+        }
+
+        // Export data
+        function exportData() {
+            if (feedbackData.length === 0) {
+                showToast('No data to export', 'error');
+                return;
+            }
+            
+            const dataStr = JSON.stringify(feedbackData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'feedback_analysis.json';
+            link.click();
+            URL.revokeObjectURL(url);
+            
+            showToast('Data exported successfully!');
+        }
+
+        // Show settings modal
+        function showSettings() {
+            showToast('Settings panel coming soon!', 'info');
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            
+            // Update message
+            toastMessage.textContent = message;
+            
+            // Update color based on type
+            toast.className = 'fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg transform transition-transform duration-300';
+            if (type === 'error') {
+                toast.classList.add('bg-red-600', 'text-white');
+            } else if (type === 'info') {
+                toast.classList.add('bg-blue-600', 'text-white');
+            } else {
+                toast.classList.add('bg-green-600', 'text-white');
+            }
+            
+            // Show toast
+            toast.classList.remove('translate-y-full');
+            
+            // Hide after 3 seconds
+            setTimeout(() => {
+                toast.classList.add('translate-y-full');
+            }, 3000);
+        }
+
+        // File input handler
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('feedbackInput').value = e.target.result;
+                    showToast('File loaded successfully!');
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updatePathSummary();
+            
+            // Load saved paths
+            const inputPaths = JSON.parse(localStorage.getItem('inputPaths') || '{}');
+            const outputPaths = JSON.parse(localStorage.getItem('outputPaths') || '{}');
+            
+            if (inputPaths.inputPath) document.getElementById('inputPath').value = inputPaths.inputPath;
+            if (inputPaths.filePattern) document.getElementById('filePattern').value = inputPaths.filePattern;
+            if (inputPaths.apiEndpoint) document.getElementById('apiEndpoint').value = inputPaths.apiEndpoint;
+            
+            if (outputPaths.outputPath) document.getElementById('outputPath').value = outputPaths.outputPath;
+            if (outputPaths.reportFormat) document.getElementById('reportFormat').value = outputPaths.reportFormat;
+            if (outputPaths.logPath) document.getElementById('logPath').value = outputPaths.logPath;
+        });
+    </script>
+</body>
+</html>
